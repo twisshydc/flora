@@ -19,8 +19,6 @@ const FILES = {
   sessions: path.join(DATA_DIR, "sessions.json")
 };
 
-
-
 for (const file of Object.values(FILES)) {
   if (!fs.existsSync(file)) {
     fs.writeFileSync(file, "[]", "utf8");
@@ -36,16 +34,23 @@ function readJSON(file) {
   }
 
   try {
-    const result = JSON.parse(fs.readFileSync(file, "utf8"));
+    const result = JSON.parse(
+      fs.readFileSync(file, "utf8")
+    );
     return Array.isArray(result) ? result : [];
   } catch {
-    throw new Error(`Unable to read ${path.basename(file)}`);
+    throw new Error(
+      `Unable to read ${path.basename(file)}`
+    );
   }
 }
 
 function writeJSON(file, data) {
   const temporary = file + ".tmp";
-  fs.writeFileSync(temporary, JSON.stringify(data, null, 2));
+  fs.writeFileSync(
+    temporary,
+    JSON.stringify(data, null, 2)
+  );
   fs.renameSync(temporary, file);
 }
 
@@ -54,7 +59,8 @@ function randomId() {
 }
 
 function hashPassword(password, salt) {
-  return crypto.scryptSync(password, salt, 64).toString("hex");
+  return crypto.scryptSync(password, salt, 64)
+    .toString("hex");
 }
 
 function publicUser(user) {
@@ -67,18 +73,27 @@ function publicUser(user) {
 
 function cookieToken(req) {
   const header = req.headers.cookie || "";
-  const match = header.match(/(?:^|;\s*)flora_session=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : "";
+  const match = header.match(
+    /(?:^|;\s*)flora_session=([^;]+)/
+  );
+
+  return match
+    ? decodeURIComponent(match[1])
+    : "";
 }
 
 function tokenHash(token) {
-  return crypto.createHash("sha256").update(token).digest("hex");
+  return crypto.createHash("sha256")
+    .update(token)
+    .digest("hex");
 }
 
 function createSession(res, userId) {
-  const token = crypto.randomBytes(32).toString("hex");
+  const token = crypto.randomBytes(32)
+    .toString("hex");
+
   const sessions = readJSON(FILES.sessions)
-    .filter(s => s.expires > Date.now());
+    .filter(session => session.expires > Date.now());
 
   sessions.push({
     tokenHash: tokenHash(token),
@@ -91,7 +106,7 @@ function createSession(res, userId) {
   res.cookie("flora_session", token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false, // Localhost only; use true with HTTPS
+    secure: false,
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 }
@@ -99,9 +114,10 @@ function createSession(res, userId) {
 function requireAuth(req, res, next) {
   const token = cookieToken(req);
   const sessions = readJSON(FILES.sessions);
-  const session = sessions.find(s =>
-    s.tokenHash === tokenHash(token) &&
-    s.expires > Date.now()
+
+  const session = sessions.find(item =>
+    item.tokenHash === tokenHash(token) &&
+    item.expires > Date.now()
   );
 
   if (!token || !session) {
@@ -111,7 +127,7 @@ function requireAuth(req, res, next) {
   }
 
   const user = readJSON(FILES.users)
-    .find(u => u.id === session.userId);
+    .find(item => item.id === session.userId);
 
   if (!user) {
     return res.status(401).json({
@@ -128,32 +144,51 @@ function isValidEmail(email) {
 }
 
 function validPlant(body) {
-  return typeof body.name === "string" &&
+  return (
+    typeof body.name === "string" &&
     body.name.trim().length > 0 &&
     body.name.trim().length <= 40 &&
     typeof body.type === "string" &&
     body.type.trim().length > 0 &&
     body.type.trim().length <= 50 &&
     [1, 2, 3].includes(Number(body.frequency)) &&
-    /^([01]\d|2[0-3]):[0-5]\d$/
-      .test(body.startTime || "") &&
-    (!body.image ||
-      (typeof body.image === "string" &&
-       body.image.length <= 2_000_000));
+    /^([01]\d|2[0-3]):[0-5]\d$/.test(
+      body.startTime || ""
+    ) &&
+    (
+      !body.image ||
+      (
+        typeof body.image === "string" &&
+        body.image.length <= 2000000
+      )
+    )
+  );
 }
 
 app.use(express.json({ limit: "3mb" }));
 
-// SIGNUP
+// =====================================
+// SIGN UP
+// =====================================
+
 app.post("/api/signup", (req, res) => {
-  const username = String(req.body.username || "").trim();
-  const email = String(req.body.email || "").trim().toLowerCase();
+  const username = String(
+    req.body.username || ""
+  ).trim();
+
+  const email = String(
+    req.body.email || ""
+  ).trim().toLowerCase();
+
   const password = req.body.password;
 
-  if (!username || username.length > 30 ||
-      !isValidEmail(email) ||
-      typeof password !== "string" ||
-      password.length < 8) {
+  if (
+    !username ||
+    username.length > 30 ||
+    !isValidEmail(email) ||
+    typeof password !== "string" ||
+    password.length < 8
+  ) {
     return res.status(400).json({
       error: "Please enter valid account information."
     });
@@ -161,13 +196,14 @@ app.post("/api/signup", (req, res) => {
 
   const users = readJSON(FILES.users);
 
-  if (users.some(u => u.email === email)) {
+  if (users.some(user => user.email === email)) {
     return res.status(409).json({
       error: "Email already registered."
     });
   }
 
-  const salt = crypto.randomBytes(16).toString("hex");
+  const salt = crypto.randomBytes(16)
+    .toString("hex");
 
   const user = {
     id: randomId(),
@@ -178,6 +214,7 @@ app.post("/api/signup", (req, res) => {
   };
 
   users.push(user);
+
   writeJSON(FILES.users, users);
   createSession(res, user.id);
 
@@ -187,13 +224,19 @@ app.post("/api/signup", (req, res) => {
   });
 });
 
+// =====================================
 // LOGIN
+// =====================================
+
 app.post("/api/login", (req, res) => {
-  const email = String(req.body.email || "").trim().toLowerCase();
+  const email = String(
+    req.body.email || ""
+  ).trim().toLowerCase();
+
   const password = req.body.password;
 
   const user = readJSON(FILES.users)
-    .find(u => u.email === email);
+    .find(item => item.email === email);
 
   if (!user || typeof password !== "string") {
     return res.status(401).json({
@@ -202,12 +245,19 @@ app.post("/api/login", (req, res) => {
   }
 
   const candidate = Buffer.from(
-    hashPassword(password, user.salt), "hex"
+    hashPassword(password, user.salt),
+    "hex"
   );
-  const actual = Buffer.from(user.passwordHash, "hex");
 
-  if (candidate.length !== actual.length ||
-      !crypto.timingSafeEqual(candidate, actual)) {
+  const actual = Buffer.from(
+    user.passwordHash,
+    "hex"
+  );
+
+  if (
+    candidate.length !== actual.length ||
+    !crypto.timingSafeEqual(candidate, actual)
+  ) {
     return res.status(401).json({
       error: "Incorrect email or password."
     });
@@ -221,30 +271,57 @@ app.post("/api/login", (req, res) => {
   });
 });
 
+// =====================================
 // LOGOUT
+// =====================================
+
 app.post("/api/logout", (req, res) => {
   const token = cookieToken(req);
   const sessions = readJSON(FILES.sessions);
 
-  writeJSON(FILES.sessions, sessions.filter(
-    s => s.tokenHash !== tokenHash(token)
-  ));
+  writeJSON(
+    FILES.sessions,
+    sessions.filter(
+      session =>
+        session.tokenHash !== tokenHash(token)
+    )
+  );
 
   res.clearCookie("flora_session");
-  res.json({ message: "Logged out successfully." });
+
+  res.json({
+    message: "Logged out successfully."
+  });
 });
 
+// =====================================
 // CURRENT ACCOUNT
+// =====================================
+
 app.get("/api/me", requireAuth, (req, res) => {
-  res.json({ user: publicUser(req.user) });
+  res.json({
+    user: publicUser(req.user)
+  });
 });
 
+// =====================================
 // UPDATE PROFILE
-app.put("/api/me", requireAuth, (req, res) => {
-  const username = String(req.body.username || "").trim();
-  const email = String(req.body.email || "").trim().toLowerCase();
+// =====================================
 
-  if (!username || username.length > 30 || !isValidEmail(email)) {
+app.put("/api/me", requireAuth, (req, res) => {
+  const username = String(
+    req.body.username || ""
+  ).trim();
+
+  const email = String(
+    req.body.email || ""
+  ).trim().toLowerCase();
+
+  if (
+    !username ||
+    username.length > 30 ||
+    !isValidEmail(email)
+  ) {
     return res.status(400).json({
       error: "Invalid profile information."
     });
@@ -252,51 +329,88 @@ app.put("/api/me", requireAuth, (req, res) => {
 
   const users = readJSON(FILES.users);
 
-  if (users.some(u =>
-    u.email === email && u.id !== req.user.id
+  if (users.some(user =>
+    user.email === email &&
+    user.id !== req.user.id
   )) {
     return res.status(409).json({
       error: "Email already registered."
     });
   }
 
-  const user = users.find(u => u.id === req.user.id);
+  const user = users.find(
+    item => item.id === req.user.id
+  );
+
   user.username = username;
   user.email = email;
 
   writeJSON(FILES.users, users);
-  res.json({ user: publicUser(user) });
+
+  res.json({
+    user: publicUser(user)
+  });
 });
 
+// =====================================
 // DELETE ACCOUNT
+// =====================================
+
 app.delete("/api/me", requireAuth, (req, res) => {
   const id = req.user.id;
 
-  writeJSON(FILES.users,
-    readJSON(FILES.users).filter(u => u.id !== id));
+  writeJSON(
+    FILES.users,
+    readJSON(FILES.users).filter(
+      user => user.id !== id
+    )
+  );
 
-  writeJSON(FILES.plants,
-    readJSON(FILES.plants).filter(p => p.userId !== id));
+  writeJSON(
+    FILES.plants,
+    readJSON(FILES.plants).filter(
+      plant => plant.userId !== id
+    )
+  );
 
-  writeJSON(FILES.reminders,
-    readJSON(FILES.reminders).filter(r => r.userId !== id));
+  writeJSON(
+    FILES.reminders,
+    readJSON(FILES.reminders).filter(
+      reminder => reminder.userId !== id
+    )
+  );
 
-  writeJSON(FILES.sessions,
-    readJSON(FILES.sessions).filter(s => s.userId !== id));
+  writeJSON(
+    FILES.sessions,
+    readJSON(FILES.sessions).filter(
+      session => session.userId !== id
+    )
+  );
 
   res.clearCookie("flora_session");
-  res.json({ message: "Account deleted." });
+
+  res.json({
+    message: "Account deleted."
+  });
 });
 
+// =====================================
 // READ PLANTS
+// =====================================
+
 app.get("/api/plants", requireAuth, (req, res) => {
   const plants = readJSON(FILES.plants)
-    .filter(p => p.userId === req.user.id);
+    .filter(
+      plant => plant.userId === req.user.id
+    );
 
   res.json(plants);
 });
 
+// =====================================
 // CREATE PLANT
+// =====================================
+
 app.post("/api/plants", requireAuth, (req, res) => {
   if (!validPlant(req.body)) {
     return res.status(400).json({
@@ -316,167 +430,288 @@ app.post("/api/plants", requireAuth, (req, res) => {
   };
 
   const plants = readJSON(FILES.plants);
+
   plants.push(plant);
   writeJSON(FILES.plants, plants);
 
   res.status(201).json(plant);
 });
 
+// =====================================
 // UPDATE PLANT
-app.put("/api/plants/:id", requireAuth, (req, res) => {
-  if (!validPlant(req.body)) {
-    return res.status(400).json({
-      error: "Invalid plant information."
-    });
+// =====================================
+
+app.put(
+  "/api/plants/:id",
+  requireAuth,
+  (req, res) => {
+    if (!validPlant(req.body)) {
+      return res.status(400).json({
+        error: "Invalid plant information."
+      });
+    }
+
+    const plants = readJSON(FILES.plants);
+
+    const plant = plants.find(item =>
+      item.id === req.params.id &&
+      item.userId === req.user.id
+    );
+
+    if (!plant) {
+      return res.status(404).json({
+        error: "Plant not found."
+      });
+    }
+
+    plant.name = req.body.name.trim();
+    plant.type = req.body.type.trim();
+    plant.image = req.body.image || "";
+    plant.frequency = Number(req.body.frequency);
+    plant.startTime = req.body.startTime;
+
+    writeJSON(FILES.plants, plants);
+
+    res.json(plant);
   }
+);
 
-  const plants = readJSON(FILES.plants);
-  const plant = plants.find(p =>
-    p.id === req.params.id &&
-    p.userId === req.user.id
-  );
-
-  if (!plant) {
-    return res.status(404).json({
-      error: "Plant not found."
-    });
-  }
-
-  plant.name = req.body.name.trim();
-  plant.type = req.body.type.trim();
-  plant.image = req.body.image || "";
-  plant.frequency = Number(req.body.frequency);
-  plant.startTime = req.body.startTime;
-
-  writeJSON(FILES.plants, plants);
-  res.json(plant);
-});
-
+// =====================================
 // WATER PLANT
-app.patch("/api/plants/:id/water", requireAuth, (req, res) => {
-  const plants = readJSON(FILES.plants);
-  const plant = plants.find(p =>
-    p.id === req.params.id &&
-    p.userId === req.user.id
-  );
+// =====================================
 
-  if (!plant) {
-    return res.status(404).json({
-      error: "Plant not found."
-    });
+app.patch(
+  "/api/plants/:id/water",
+  requireAuth,
+  (req, res) => {
+    const plants = readJSON(FILES.plants);
+
+    const plant = plants.find(item =>
+      item.id === req.params.id &&
+      item.userId === req.user.id
+    );
+
+    if (!plant) {
+      return res.status(404).json({
+        error: "Plant not found."
+      });
+    }
+
+    plant.lastWatered = Date.now();
+
+    writeJSON(FILES.plants, plants);
+
+    res.json(plant);
   }
+);
 
-  plant.lastWatered = Date.now();
-  writeJSON(FILES.plants, plants);
-
-  res.json(plant);
-});
-
+// =====================================
 // DELETE PLANT
-app.delete("/api/plants/:id", requireAuth, (req, res) => {
-  const plants = readJSON(FILES.plants);
-  const remaining = plants.filter(p =>
-    !(p.id === req.params.id &&
-      p.userId === req.user.id)
-  );
+// =====================================
 
-  if (remaining.length === plants.length) {
-    return res.status(404).json({
-      error: "Plant not found."
+app.delete(
+  "/api/plants/:id",
+  requireAuth,
+  (req, res) => {
+    const plants = readJSON(FILES.plants);
+
+    const remaining = plants.filter(
+      plant =>
+        !(
+          plant.id === req.params.id &&
+          plant.userId === req.user.id
+        )
+    );
+
+    if (remaining.length === plants.length) {
+      return res.status(404).json({
+        error: "Plant not found."
+      });
+    }
+
+    writeJSON(FILES.plants, remaining);
+
+    // Remove reminders for the deleted plant.
+    const reminders = readJSON(FILES.reminders);
+
+    writeJSON(
+      FILES.reminders,
+      reminders.filter(
+        reminder =>
+          !(
+            reminder.plantId === req.params.id &&
+            reminder.userId === req.user.id
+          )
+      )
+    );
+
+    res.json({
+      message: "Plant deleted successfully."
     });
   }
+);
 
-  writeJSON(FILES.plants, remaining);
-  res.json({ message: "Plant deleted successfully." });
-});
-
+// =====================================
 // READ CARE REMINDERS
-app.get("/api/reminders", requireAuth, (req, res) => {
-  res.json(readJSON(FILES.reminders).filter(
-    r => r.userId === req.user.id
-  ));
-});
+// =====================================
 
+app.get(
+  "/api/reminders",
+  requireAuth,
+  (req, res) => {
+    const reminders = readJSON(FILES.reminders)
+      .filter(
+        reminder => reminder.userId === req.user.id
+      );
+
+    res.json(reminders);
+  }
+);
+
+// =====================================
 // CREATE CARE REMINDER
-app.post("/api/reminders", requireAuth, (req, res) => {
-  const { plantName, type, date, time } = req.body;
+// =====================================
 
-  if (typeof plantName !== "string" ||
-      !plantName.trim() ||
-      plantName.length > 40 ||
-      !["Watering", "Sunlight", "Fertilizing", "Pruning", "Other"]
-        .includes(type) ||
+app.post(
+  "/api/reminders",
+  requireAuth,
+  (req, res) => {
+    const {
+      plantId,
+      plantType,
+      type,
+      date,
+      time
+    } = req.body;
+
+    // Check that this plant belongs to the user.
+    const plant = readJSON(FILES.plants).find(
+      item =>
+        item.id === plantId &&
+        item.userId === req.user.id
+    );
+
+    const validActivities = [
+      "Watering",
+      "Sunlight",
+      "Fertilizing",
+      "Pruning",
+      "Other"
+    ];
+
+    // Check that the selected plant type matches.
+    if (
+      !plant ||
+      plant.type !== plantType ||
+      !validActivities.includes(type) ||
       typeof date !== "string" ||
       !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
       typeof time !== "string" ||
-      !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
-    return res.status(400).json({
-      error: "Invalid reminder information."
-    });
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)
+    ) {
+      return res.status(400).json({
+        error:
+          "Select a valid plant, activity, date, and time."
+      });
+    }
+
+    const reminder = {
+      id: randomId(),
+      userId: req.user.id,
+
+      plantId: plant.id,
+      plantName: plant.name,
+      plantType: plant.type,
+
+      type,
+      date,
+      time,
+      completed: false
+    };
+
+    const reminders = readJSON(FILES.reminders);
+
+    reminders.push(reminder);
+    writeJSON(FILES.reminders, reminders);
+
+    res.status(201).json(reminder);
   }
+);
 
-  const reminder = {
-    id: randomId(),
-    userId: req.user.id,
-    plantName: plantName.trim(),
-    type,
-    date,
-    time,
-    completed: false
-  };
-
-  const reminders = readJSON(FILES.reminders);
-  reminders.push(reminder);
-  writeJSON(FILES.reminders, reminders);
-
-  res.status(201).json(reminder);
-});
-
+// =====================================
 // UPDATE CARE REMINDER
-app.patch("/api/reminders/:id", requireAuth, (req, res) => {
-  if (typeof req.body.completed !== "boolean") {
-    return res.status(400).json({
-      error: "Invalid reminder status."
-    });
+// =====================================
+
+app.patch(
+  "/api/reminders/:id",
+  requireAuth,
+  (req, res) => {
+    if (
+      typeof req.body.completed !== "boolean"
+    ) {
+      return res.status(400).json({
+        error: "Invalid reminder status."
+      });
+    }
+
+    const reminders = readJSON(FILES.reminders);
+
+    const reminder = reminders.find(
+      item =>
+        item.id === req.params.id &&
+        item.userId === req.user.id
+    );
+
+    if (!reminder) {
+      return res.status(404).json({
+        error: "Reminder not found."
+      });
+    }
+
+    reminder.completed = req.body.completed;
+
+    writeJSON(FILES.reminders, reminders);
+
+    res.json(reminder);
   }
+);
 
-  const reminders = readJSON(FILES.reminders);
-  const reminder = reminders.find(r =>
-    r.id === req.params.id &&
-    r.userId === req.user.id
-  );
-
-  if (!reminder) {
-    return res.status(404).json({
-      error: "Reminder not found."
-    });
-  }
-
-  reminder.completed = req.body.completed;
-  writeJSON(FILES.reminders, reminders);
-
-  res.json(reminder);
-});
-
+// =====================================
 // DELETE CARE REMINDER
-app.delete("/api/reminders/:id", requireAuth, (req, res) => {
-  const reminders = readJSON(FILES.reminders);
-  const remaining = reminders.filter(r =>
-    !(r.id === req.params.id &&
-      r.userId === req.user.id)
-  );
+// =====================================
 
-  if (remaining.length === reminders.length) {
-    return res.status(404).json({
-      error: "Reminder not found."
+app.delete(
+  "/api/reminders/:id",
+  requireAuth,
+  (req, res) => {
+    const reminders = readJSON(FILES.reminders);
+
+    const remaining = reminders.filter(
+      item =>
+        !(
+          item.id === req.params.id &&
+          item.userId === req.user.id
+        )
+    );
+
+    if (remaining.length === reminders.length) {
+      return res.status(404).json({
+        error: "Reminder not found."
+      });
+    }
+
+    writeJSON(FILES.reminders, remaining);
+
+    res.json({
+      message: "Reminder deleted."
     });
   }
+);
 
-  writeJSON(FILES.reminders, remaining);
-  res.json({ message: "Reminder deleted." });
-});
-
+// =====================================
 // HEALTH CHECK
+// =====================================
+
 app.get("/api/health", (req, res) => {
   res.json({
     success: true,
@@ -484,9 +719,22 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// =====================================
 // FRONTEND
-app.use(express.static(path.join(__dirname, "public")));
+// =====================================
+
+app.use(
+  express.static(
+    path.join(__dirname, "public")
+  )
+);
+
+// =====================================
+// START SERVER
+// =====================================
 
 app.listen(PORT, () => {
-  console.log(`Flora running at http://localhost:${PORT}`);
+  console.log(
+    `Flora running at http://localhost:${PORT}`
+  );
 });

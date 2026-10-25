@@ -5,19 +5,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
   const pad = n => String(n).padStart(2, "0");
 
-  const SCREENS = [
-    "home", "signup", "login", "loading",
-    "dashboard", "tracker", "settings"
-  ];
-
-  const PRIVATE = [
-    "dashboard", "tracker", "settings", "loading"
-  ];
-
-  const ICONS = {
-    success: "images/check.svg",
-    error: "images/x.svg"
-  };
+  const PRIVATE = ["dashboard", "tracker", "settings", "loading"];
+  const PAGES = ["home", "login", "signup", ...PRIVATE];
 
   let account = null;
   let plants = [];
@@ -26,14 +15,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let page = "home";
   let selectedPlantId = null;
+  let filter = "all";
   let selectedDate = dateKey(new Date());
+
   let viewedMonth = new Date(
     new Date().getFullYear(),
     new Date().getMonth(),
     1
   );
 
-  let filter = "all";
   let plantMode = "add";
   let temporaryImage = "";
   let imageLoading = false;
@@ -43,13 +33,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let popupTimer;
   let toastTimer;
-  let loadingFrame;
   let signupTimer;
+  let loadingFrame;
   let busy = false;
 
-  /* =====================================
-     DATE HELPERS
-  ===================================== */
+  // =====================================
+  // GENERAL HELPERS
+  // =====================================
 
   function dateKey(date) {
     return [
@@ -60,24 +50,34 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function parseDay(value) {
-    const [y, m, d] = value.split("-").map(Number);
-    return new Date(y, m - 1, d);
+    const [year, month, day] =
+      value.split("-").map(Number);
+    return new Date(year, month - 1, day);
   }
 
-  function formatDate(timestamp) {
-    if (!Number.isFinite(timestamp)) {
-      return "Not yet watered";
-    }
-
-    return new Date(timestamp).toLocaleString(
+  function displayDate(value, options = {
+    weekday: "short",
+    month: "short",
+    day: "numeric"
+  }) {
+    return parseDay(value).toLocaleDateString(
       undefined,
-      { dateStyle: "medium", timeStyle: "short" }
+      options
     );
   }
 
-  function formatTime(value) {
+  function formatDate(timestamp) {
+    return Number.isFinite(timestamp)
+      ? new Date(timestamp).toLocaleString(
+          undefined,
+          { dateStyle: "medium", timeStyle: "short" }
+        )
+      : "Not yet watered";
+  }
+
+  function formatTime(value = "09:00") {
     const [hour, minute] =
-      (value || "09:00").split(":").map(Number);
+      value.split(":").map(Number);
 
     return new Date(
       2026, 0, 1, hour, minute
@@ -87,36 +87,59 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function displayDate(value, options = {
-    weekday: "short",
-    month: "short",
-    day: "numeric"
-  }) {
-    return parseDay(value).toLocaleDateString(
-      undefined, options
-    );
-  }
-
-  function node(tag, className = "", value = "") {
+  function node(tag, className = "", text = "") {
     const element = document.createElement(tag);
     element.className = className;
-    element.textContent = value;
+    element.textContent = text;
     return element;
   }
 
   function currentPlant() {
     return plants.find(
       plant => String(plant.id) === String(selectedPlantId)
-    ) || null;
+    );
   }
 
-  function currentUsername() {
-    return account?.username || "Gardener";
+  // =====================================
+  // POPUP MESSAGES
+  // =====================================
+
+  function showMessage(title, message, kind = "success") {
+    clearTimeout(popupTimer);
+
+    $("quick-popup-title").textContent = title;
+    $("quick-popup-text").textContent = message;
+
+    $("quick-popup-image").src =
+      kind === "error"
+        ? "images/x.svg"
+        : "images/check.svg";
+
+    $("quick-popup").hidden = false;
+
+    popupTimer = setTimeout(() => {
+      $("quick-popup").hidden = true;
+    }, 2000);
   }
 
-  /* =====================================
-     EXPRESS API
-  ===================================== */
+  const success = (title, message) =>
+    showMessage(title, message);
+
+  const error = (title, message) =>
+    showMessage(title, message, "error");
+
+  function toast(message) {
+    clearTimeout(toastTimer);
+    $("toast").textContent = message;
+
+    toastTimer = setTimeout(() => {
+      $("toast").textContent = "";
+    }, 2000);
+  }
+
+  // =====================================
+  // BACKEND REQUESTS
+  // =====================================
 
   async function api(url, options = {}) {
     let response;
@@ -132,22 +155,18 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     } catch {
       throw new Error(
-        "Cannot connect to Flora. Make sure the Express server is running."
+        "Cannot connect to Flora. Run node server.js first."
       );
     }
 
-    let result;
-
-    try {
-      result = await response.json();
-    } catch {
-      throw new Error("Invalid response from the server.");
-    }
+    const result = await response.json()
+      .catch(() => ({}));
 
     if (!response.ok) {
-      if (response.status === 401 &&
-          !url.includes("/api/login") &&
-          !url.includes("/api/signup")) {
+      if (
+        response.status === 401 &&
+        !["/api/login", "/api/signup"].includes(url)
+      ) {
         account = null;
       }
 
@@ -159,111 +178,66 @@ document.addEventListener("DOMContentLoaded", () => {
     return result;
   }
 
-  function request(method, url, body) {
-    return api(url, {
+  const request = (method, url, body) =>
+    api(url, {
       method,
       ...(body === undefined
         ? {}
         : { body: JSON.stringify(body) })
     });
-  }
 
   async function loadAccountData() {
-    const [savedPlants, savedReminders] = await Promise.all([
+    [plants, reminders] = await Promise.all([
       api("/api/plants"),
       api("/api/reminders")
     ]);
 
-    plants = savedPlants.map(plant => ({
+    plants = plants.map(plant => ({
       ...plant,
       frequency: Number(plant.frequency) || 1,
       startTime: plant.startTime || "08:00",
       lastWatered: Number.isFinite(plant.lastWatered)
-        ? plant.lastWatered : null
+        ? plant.lastWatered
+        : null
     }));
-
-    reminders = savedReminders;
-
-    const recentKey = `flora-recent-${account.id}`;
 
     try {
       recent = JSON.parse(
-        sessionStorage.getItem(recentKey) || "[]"
+        sessionStorage.getItem(
+          `flora-recent-${account.id}`
+        ) || "[]"
       );
+
       if (!Array.isArray(recent)) recent = [];
     } catch {
       recent = [];
     }
   }
 
-  /* =====================================
-     NOTIFICATIONS AND POPUPS
-  ===================================== */
+  // =====================================
+  // PAGE NAVIGATION
+  // =====================================
 
-  function notify(message) {
-    const toast = $("toast");
-    clearTimeout(toastTimer);
+  function showPage(target) {
+    if (!PAGES.includes(target)) target = "home";
 
-    toast.textContent = message;
-
-    toastTimer = setTimeout(() => {
-      toast.textContent = "";
-    }, 2000);
-  }
-
-  function popup(title, message, type = "success") {
-    clearTimeout(popupTimer);
-
-    $("quick-popup-title").textContent = title;
-    $("quick-popup-text").textContent = message;
-
-    $("quick-popup-image").src =
-      type === "error"
-        ? ICONS.error
-        : ICONS.success;
-
-    $("quick-popup").hidden = false;
-
-    popupTimer = setTimeout(() => {
-      $("quick-popup").hidden = true;
-    }, 2000);
-  }
-
-  function success(title, message) {
-    popup(title, message, "success");
-  }
-
-  function error(title, message) {
-    popup(title, message, "error");
-  }
-
-  /* =====================================
-     PAGE NAVIGATION
-  ===================================== */
-
-  function showPage(requested) {
-    if (!SCREENS.includes(requested)) {
-      requested = "home";
-    }
-
-    if (PRIVATE.includes(requested) && !account) {
-      requested = "login";
+    if (PRIVATE.includes(target) && !account) {
+      target = "login";
     }
 
     cancelAnimationFrame(loadingFrame);
 
-    page = requested;
-    document.body.dataset.page = requested;
+    page = target;
+    document.body.dataset.page = target;
 
     document.querySelectorAll("[data-screen]")
       .forEach(screen => {
-        screen.hidden =
-          screen.dataset.screen !== requested;
+        screen.hidden = screen.dataset.screen !== target;
       });
 
     const inside = [
       "dashboard", "tracker", "settings"
-    ].includes(requested);
+    ].includes(target);
 
     $("app-navbar").hidden = !inside;
     $("app-footer").hidden = !inside;
@@ -280,7 +254,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.querySelectorAll("[data-nav]")
       .forEach(link => {
-        if (link.dataset.nav === requested) {
+        if (link.dataset.nav === target) {
           link.setAttribute("aria-current", "page");
         } else {
           link.removeAttribute("aria-current");
@@ -288,28 +262,21 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
     document.title =
-      `${requested === "home"
-        ? "Welcome"
-        : requested[0].toUpperCase() +
-          requested.slice(1)} | Flora`;
+      `${target[0].toUpperCase() +
+      target.slice(1)} | Flora`;
 
-    if (requested === "dashboard") {
+    if (target === "dashboard") {
       renderDashboard();
     }
 
-    if (requested === "tracker") {
+    if (target === "tracker") {
       $("greeting").textContent =
-        `Hi ${currentUsername()}!`;
+        `Hi ${account.username}!`;
       renderPlants();
     }
 
-    if (requested === "settings") {
-      populateSettings();
-    }
-
-    if (requested === "loading") {
-      startLoading();
-    }
+    if (target === "settings") populateSettings();
+    if (target === "loading") startLoading();
 
     window.scrollTo(0, 0);
   }
@@ -317,48 +284,45 @@ document.addEventListener("DOMContentLoaded", () => {
   function go(target, replace = false) {
     clearTimeout(signupTimer);
 
-    if (!SCREENS.includes(target)) {
-      target = "home";
-    }
+    const safeTarget =
+      PAGES.includes(target) ? target : "home";
 
-    const url = `?page=${target}`;
+    const url = `?page=${safeTarget}`;
 
     if (replace) {
-      history.replaceState({ page: target }, "", url);
+      history.replaceState(
+        { page: safeTarget }, "", url
+      );
     } else {
-      history.pushState({ page: target }, "", url);
+      history.pushState(
+        { page: safeTarget }, "", url
+      );
     }
 
-    showPage(target);
+    showPage(safeTarget);
   }
 
   document.addEventListener("click", event => {
-    const link =
-      event.target.closest('a[href^="?page="]');
-
+    const link = event.target.closest('a[href^="?page="]');
     if (!link) return;
 
     event.preventDefault();
 
-    const target =
-      new URL(link.href).searchParams.get("page");
-
-    go(target);
+    go(
+      new URL(link.href).searchParams.get("page")
+    );
   });
 
   window.addEventListener("popstate", () => {
-    clearTimeout(signupTimer);
-
-    const requested = new URLSearchParams(
-      location.search
-    ).get("page") || "home";
-
-    showPage(requested);
+    showPage(
+      new URLSearchParams(location.search)
+        .get("page") || "home"
+    );
   });
 
-  /* =====================================
-     SIGNUP
-  ===================================== */
+  // =====================================
+  // SIGN UP
+  // =====================================
 
   $("signup-form").addEventListener(
     "submit",
@@ -375,29 +339,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const password =
         $("signup-password").value;
 
-      const confirm =
-        $("signup-confirm").value;
-
-      if (!username || !email) {
-        error(
-          "Missing Information!",
-          "Please complete all required fields."
-        );
-        return;
-      }
-
-      if (password !== confirm) {
+      if (password !== $("signup-confirm").value) {
         error(
           "Passwords Don't Match!",
-          "Please make sure both passwords are the same."
+          "The passwords must match."
         );
         return;
       }
 
-      if (password.length < 8) {
+      if (!username || !email || password.length < 8) {
         error(
-          "Password Too Short!",
-          "Your password must have at least 8 characters."
+          "Missing Information!",
+          "Enter valid information and a password of at least 8 characters."
         );
         return;
       }
@@ -418,13 +371,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         success(
           "Account Created!",
-          "Welcome to Flora! Your little garden is ready to grow."
+          "Welcome to Flora!"
         );
 
         signupTimer = setTimeout(() => {
-          if (page === "signup") {
-            go("loading");
-          }
+          if (page === "signup") go("loading");
         }, 2000);
 
       } catch (err) {
@@ -435,9 +386,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  /* =====================================
-     LOGIN
-  ===================================== */
+  // =====================================
+  // LOGIN
+  // =====================================
 
   $("login-form").addEventListener(
     "submit",
@@ -445,26 +396,24 @@ document.addEventListener("DOMContentLoaded", () => {
       event.preventDefault();
       if (busy) return;
 
-      const email =
-        $("login-email").value.trim().toLowerCase();
-
-      const password =
-        $("login-password").value;
-
       busy = true;
 
       try {
         const result = await request(
           "POST",
           "/api/login",
-          { email, password }
+          {
+            email:
+              $("login-email").value.trim().toLowerCase(),
+            password:
+              $("login-password").value
+          }
         );
 
         account = result.user;
         await loadAccountData();
 
         $("login-form").reset();
-
         go("loading");
 
       } catch (err) {
@@ -475,68 +424,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  /* =====================================
-     LOADING SCREEN
-  ===================================== */
-
-  function startLoading() {
-    const duration = 5000;
-    const started = performance.now();
-
-    const progress =
-      document.querySelector(".loading-progress");
-
-    progress.style.width = "0%";
-    $("loading-percent").textContent = "0%";
-
-    function update(now) {
-      if (page !== "loading") return;
-
-      const percent = Math.min(
-        100,
-        Math.floor(
-          ((now - started) / duration) * 100
-        )
-      );
-
-      $("loading-percent").textContent =
-        `${percent}%`;
-
-      progress.style.width = `${percent}%`;
-
-      document.querySelector(".loading-bar")
-        .setAttribute(
-          "aria-valuenow",
-          String(percent)
-        );
-
-      if (percent < 100) {
-        loadingFrame =
-          requestAnimationFrame(update);
-      } else {
-        go("dashboard", true);
-      }
-    }
-
-    loadingFrame = requestAnimationFrame(update);
-  }
-
-  /* =====================================
-     MOBILE MENU AND LOGOUT
-  ===================================== */
-
-  $("menu-toggle").addEventListener(
-    "click",
-    () => {
-      const menu = $("mobile-nav");
-      menu.hidden = !menu.hidden;
-
-      $("menu-toggle").setAttribute(
-        "aria-expanded",
-        String(!menu.hidden)
-      );
-    }
-  );
+  // =====================================
+  // LOGOUT
+  // =====================================
 
   async function logout() {
     clearTimeout(signupTimer);
@@ -544,7 +434,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       await request("POST", "/api/logout");
     } catch (err) {
-      notify(err.message);
+      toast(err.message);
     }
 
     account = null;
@@ -562,9 +452,58 @@ document.addEventListener("DOMContentLoaded", () => {
       button.addEventListener("click", logout);
     });
 
-  /* =====================================
-     WATERING SCHEDULE
-  ===================================== */
+  // =====================================
+  // LOADING SCREEN
+  // =====================================
+
+  function startLoading() {
+    const start = performance.now();
+
+    const progress =
+      document.querySelector(".loading-progress");
+
+    function tick(now) {
+      if (page !== "loading") return;
+
+      const percent = Math.min(
+        100,
+        Math.floor((now - start) / 50)
+      );
+
+      $("loading-percent").textContent = `${percent}%`;
+      progress.style.width = `${percent}%`;
+
+      document.querySelector(".loading-bar")
+        .setAttribute("aria-valuenow", percent);
+
+      if (percent < 100) {
+        loadingFrame = requestAnimationFrame(tick);
+      } else {
+        go("dashboard", true);
+      }
+    }
+
+    loadingFrame = requestAnimationFrame(tick);
+  }
+
+  // =====================================
+  // MOBILE MENU
+  // =====================================
+
+  $("menu-toggle").addEventListener("click", () => {
+    $("mobile-nav").hidden =
+      !$("mobile-nav").hidden;
+
+    $("menu-toggle").setAttribute(
+      "aria-expanded",
+      String(!$("mobile-nav").hidden)
+    );
+  });
+
+  // =====================================
+  // WATERING SCHEDULE
+  // Read-only status and scheduled dates
+  // =====================================
 
   function plantSchedule(plant, now = Date.now()) {
     const frequency =
@@ -574,8 +513,8 @@ document.addEventListener("DOMContentLoaded", () => {
       (plant.startTime || "08:00")
         .split(":").map(Number);
 
-    const slots = [];
     const today = new Date(now);
+    const slots = [];
 
     for (let day = -2; day <= 2; day++) {
       const base = new Date(
@@ -586,11 +525,7 @@ document.addEventListener("DOMContentLoaded", () => {
         minute
       ).getTime();
 
-      for (
-        let index = 0;
-        index < frequency;
-        index++
-      ) {
+      for (let index = 0; index < frequency; index++) {
         slots.push(
           base +
           index * (1440 / frequency) * 60000
@@ -600,50 +535,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
     slots.sort((a, b) => a - b);
 
-    const previous =
-      slots.filter(slot => slot <= now);
+    const previous = slots.filter(time => time <= now);
+    const lastDue = previous[previous.length - 1];
 
-    const upcoming =
-      slots.find(slot => slot > now);
-
-    const lastDue =
-      previous[previous.length - 1];
-
-    const lastWatered =
-      Number.isFinite(plant.lastWatered)
-        ? plant.lastWatered
-        : null;
+    const next = slots.find(time => time > now);
 
     const needsWater =
-      lastWatered === null ||
-      lastWatered < lastDue;
+      !Number.isFinite(plant.lastWatered) ||
+      plant.lastWatered < lastDue;
 
-    const dailyTimes = [];
+    const dailyTimes = Array.from(
+      { length: frequency },
+      (_, index) => {
+        const time = new Date(
+          2026, 0, 1,
+          hour,
+          minute + index * 1440 / frequency
+        );
 
-    for (
-      let index = 0;
-      index < frequency;
-      index++
-    ) {
-      const slot = new Date(
-        2026, 0, 1,
-        hour,
-        minute + index * 1440 / frequency
-      );
-
-      dailyTimes.push(
-        slot.toLocaleTimeString(undefined, {
-          hour: "numeric",
-          minute: "2-digit"
-        })
-      );
-    }
+        return time.toLocaleTimeString(
+          undefined,
+          {
+            hour: "numeric",
+            minute: "2-digit"
+          }
+        );
+      }
+    );
 
     return {
       needsWater,
-      dailyTimes,
       nextWatering:
-        needsWater ? lastDue : upcoming
+        needsWater ? lastDue : next,
+      dailyTimes
     };
   }
 
@@ -659,26 +583,25 @@ document.addEventListener("DOMContentLoaded", () => {
       return Array.from(
         { length: frequency },
         (_, index) => {
-          const time = parseDay(date);
+          const dateTime = parseDay(date);
 
-          time.setHours(
+          dateTime.setHours(
             hour,
-            minute +
-              index * 1440 / frequency,
+            minute + index * 1440 / frequency,
             0,
             0
           );
 
-          const end = new Date(
-            time.getFullYear(),
-            time.getMonth(),
-            time.getDate() + 1
-          ).getTime();
+          const nextDay = new Date(
+            dateTime.getFullYear(),
+            dateTime.getMonth(),
+            dateTime.getDate() + 1
+          );
 
           const completed =
             Number.isFinite(plant.lastWatered) &&
-            plant.lastWatered >= time.getTime() &&
-            plant.lastWatered < end;
+            plant.lastWatered >= dateTime.getTime() &&
+            plant.lastWatered < nextDay.getTime();
 
           return {
             id: `plant-${plant.id}-${index}`,
@@ -686,8 +609,8 @@ document.addEventListener("DOMContentLoaded", () => {
             type: "Watering",
             date,
             time:
-              `${pad(time.getHours())}:` +
-              pad(time.getMinutes()),
+              `${pad(dateTime.getHours())}:` +
+              pad(dateTime.getMinutes()),
             completed,
             fromTracker: true
           };
@@ -699,7 +622,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function careFor(date) {
     return [
       ...reminders.filter(
-        item => item.date === date
+        reminder => reminder.date === date
       ),
       ...wateringEvents(date)
     ].sort(
@@ -707,31 +630,30 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
-  /* =====================================
-     PLANT TRACKER - READ
-  ===================================== */
+  // =====================================
+  // MY PLANTS
+  // Water button removed
+  // =====================================
 
   function renderPlants() {
-    const grid = $("plant-grid");
-    grid.replaceChildren();
+    const host = $("plant-grid");
+    host.replaceChildren();
 
-    const search =
-      $("plant-search").value
-        .trim().toLowerCase();
+    const query =
+      $("plant-search").value.trim().toLowerCase();
 
-    const visible = plants.filter(plant => {
-      const matches =
-        plant.name.toLowerCase().includes(search) ||
-        plant.type.toLowerCase().includes(search);
-
-      return matches && (
+    const visible = plants.filter(plant =>
+      (
+        plant.name.toLowerCase().includes(query) ||
+        plant.type.toLowerCase().includes(query)
+      ) &&
+      (
         filter === "all" ||
         plantSchedule(plant).needsWater
-      );
-    });
+      )
+    );
 
-    $("empty-message").hidden =
-      visible.length > 0;
+    $("empty-message").hidden = visible.length > 0;
 
     visible.forEach(plant => {
       const schedule = plantSchedule(plant);
@@ -739,20 +661,21 @@ document.addEventListener("DOMContentLoaded", () => {
       const card = node(
         "article",
         "plant-card" +
-          (String(selectedPlantId) ===
-           String(plant.id)
+        (
+          String(selectedPlantId) === String(plant.id)
             ? " selected"
-            : "")
+            : ""
+        )
       );
 
       card.tabIndex = 0;
       card.setAttribute("role", "button");
       card.setAttribute(
-        "aria-label", `Select ${plant.name}`
+        "aria-label",
+        `Select ${plant.name}`
       );
 
-      const picture =
-        node("div", "plant-picture");
+      const picture = node("div", "plant-picture");
 
       if (plant.image) {
         const image = node("img");
@@ -761,21 +684,16 @@ document.addEventListener("DOMContentLoaded", () => {
         picture.append(image);
       }
 
-      const status = node(
-        "span",
-        "plant-card-status" +
-          (schedule.needsWater
-            ? ""
-            : " watered"),
-        schedule.needsWater
-          ? "Needs Water"
-          : "Watered"
+      picture.append(
+        node(
+          "span",
+          "plant-card-status" +
+            (schedule.needsWater ? "" : " watered"),
+          schedule.needsWater ? "Needs Water" : "Watered"
+        )
       );
 
-      picture.append(status);
-
-      const footer =
-        node("div", "plant-footer");
+      const footer = node("div", "plant-footer");
 
       const title = node(
         "span",
@@ -796,35 +714,15 @@ document.addEventListener("DOMContentLoaded", () => {
         openPlantDetails(plant);
       });
 
-      const water = node(
-        "button", "water-chip"
-      );
+      // Only the plant name, type and View button.
+      // No manual watering button is created.
+      footer.append(title, view);
 
-      water.type = "button";
-      water.title = schedule.needsWater
-        ? "Water It"
-        : "Already Watered";
-
-      const can = node("img");
-      can.src = "images/watering-can.svg";
-      can.alt = "";
-      water.append(can);
-
-      water.addEventListener(
-        "click",
-        async event => {
-          event.stopPropagation();
-          await waterPlant(plant);
-        }
-      );
-
-      footer.append(title, view, water);
       card.append(picture, footer);
 
-      function toggleSelection() {
+      function selectCard() {
         selectedPlantId =
-          String(selectedPlantId) ===
-          String(plant.id)
+          String(selectedPlantId) === String(plant.id)
             ? null
             : plant.id;
 
@@ -832,72 +730,58 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       card.addEventListener(
-        "click", toggleSelection
+        "click",
+        selectCard
       );
 
-      card.addEventListener(
-        "keydown",
-        event => {
-          if (
-            event.target === card &&
-            ["Enter", " "].includes(event.key)
-          ) {
-            event.preventDefault();
-            toggleSelection();
-          }
+      card.addEventListener("keydown", event => {
+        if (
+          event.target === card &&
+          ["Enter", " "].includes(event.key)
+        ) {
+          event.preventDefault();
+          selectCard();
         }
-      );
+      });
 
-      grid.append(card);
+      host.append(card);
     });
   }
 
-  /* =====================================
-     PLANT TRACKER - WATER
-  ===================================== */
+  // =====================================
+  // SEARCH AND FILTER
+  // =====================================
 
-  async function waterPlant(plant) {
-    if (busy) return;
+  $("plant-search").addEventListener(
+    "input",
+    renderPlants
+  );
 
-    if (!plantSchedule(plant).needsWater) {
-      error(
-        "Already Watered!",
-        `${plant.name} has already been watered. Come back at the next scheduled time!`
-      );
-      return;
-    }
+  document.querySelectorAll("[data-filter]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        filter = button.dataset.filter;
 
-    busy = true;
+        document.querySelectorAll("[data-filter]")
+          .forEach(item => {
+            item.classList.toggle(
+              "active",
+              item === button
+            );
 
-    try {
-      const updated = await request(
-        "PATCH",
-        `/api/plants/${encodeURIComponent(plant.id)}/water`
-      );
+            item.setAttribute(
+              "aria-pressed",
+              String(item === button)
+            );
+          });
 
-      Object.assign(plant, updated);
+        renderPlants();
+      });
+    });
 
-      renderPlants();
-      renderNotifications();
-
-      if ($("view-plant-dialog").open) {
-        $("view-plant-dialog").close();
-      }
-
-      success(
-        "Plant Watered!",
-        `${plant.name} has been watered successfully.`
-      );
-    } catch (err) {
-      error("Unable to Save!", err.message);
-    } finally {
-      busy = false;
-    }
-  }
-
-  /* =====================================
-     PLANT DETAILS
-  ===================================== */
+  // =====================================
+  // RECENTLY VIEWED HISTORY
+  // =====================================
 
   function saveRecentlyViewed(plant) {
     recent = [
@@ -907,8 +791,7 @@ document.addEventListener("DOMContentLoaded", () => {
         viewedAt: Date.now()
       },
       ...recent.filter(
-        item => String(item.id) !==
-          String(plant.id)
+        item => String(item.id) !== String(plant.id)
       )
     ].slice(0, 10);
 
@@ -918,9 +801,14 @@ document.addEventListener("DOMContentLoaded", () => {
         JSON.stringify(recent)
       );
     } catch {
-      // Recently viewed is optional.
+      // Browser session history is optional.
     }
   }
+
+  // =====================================
+  // VIEW PLANT DETAILS
+  // Water It / Already Watered removed
+  // =====================================
 
   function openPlantDetails(plant) {
     selectedPlantId = plant.id;
@@ -965,13 +853,6 @@ document.addEventListener("DOMContentLoaded", () => {
       image.hidden = true;
     }
 
-    $("view-water-button").disabled = false;
-
-    $("view-water-button").textContent =
-      schedule.needsWater
-        ? "Water It"
-        : "Already Watered";
-
     $("view-plant-dialog").showModal();
   }
 
@@ -980,14 +861,7 @@ document.addEventListener("DOMContentLoaded", () => {
     () => $("view-plant-dialog").close()
   );
 
-  $("view-water-button").addEventListener(
-    "click",
-    async () => {
-      const plant = currentPlant();
-      if (plant) await waterPlant(plant);
-    }
-  );
-
+  // Only Edit Plant is functional inside Plant Details.
   $("view-edit-button").addEventListener(
     "click",
     () => {
@@ -998,9 +872,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  /* =====================================
-     ADD AND EDIT FORM
-  ===================================== */
+  // =====================================
+  // ADD AND EDIT PLANTS
+  // =====================================
 
   function showPreview(image) {
     $("preview-area").hidden = !image;
@@ -1018,7 +892,6 @@ document.addEventListener("DOMContentLoaded", () => {
     imageLoading = false;
 
     $("plant-form").reset();
-    $("plant-picture").value = "";
 
     const plant = currentPlant();
 
@@ -1036,9 +909,9 @@ document.addEventListener("DOMContentLoaded", () => {
         : "";
 
     $("dialog-heading").textContent =
-      mode === "add"
-        ? "Add Plant"
-        : "Edit Plant";
+      mode === "edit"
+        ? "Edit Plant"
+        : "Add Plant";
 
     $("plant-name").value =
       mode === "edit" ? plant.name : "";
@@ -1067,17 +940,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   $("edit-plant").addEventListener(
     "click",
-    () => {
-      if (!currentPlant()) {
-        error(
-          "Select a Plant!",
-          "Please select a plant before editing."
-        );
-        return;
-      }
-
-      openPlantForm("edit");
-    }
+    () => openPlantForm("edit")
   );
 
   $("cancel-dialog").addEventListener(
@@ -1093,10 +956,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  /* =====================================
-     PLANT PICTURE UPLOAD
-     SAVES IMAGE DATA THROUGH EXPRESS
-  ===================================== */
+  // =====================================
+  // PLANT IMAGE UPLOAD
+  // =====================================
 
   $("plant-picture").addEventListener(
     "change",
@@ -1104,22 +966,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const file = $("plant-picture").files[0];
       if (!file) return;
 
-      const allowed = [
-        "image/jpeg",
-        "image/png",
-        "image/webp"
-      ];
-
       if (
-        !allowed.includes(file.type) ||
+        !["image/jpeg", "image/png", "image/webp"]
+          .includes(file.type) ||
         file.size > 1.5 * 1024 * 1024
       ) {
+        $("plant-picture").value = "";
+
         error(
           "Invalid Picture!",
-          "Choose a JPG, PNG or WEBP image under 1.5 MB."
+          "Choose a JPG, PNG or WEBP image below 1.5 MB."
         );
-
-        $("plant-picture").value = "";
         return;
       }
 
@@ -1134,32 +991,27 @@ document.addEventListener("DOMContentLoaded", () => {
           !$("plant-dialog").open
         ) return;
 
-        const imageData = String(reader.result);
+        const image = String(reader.result);
+        imageLoading = false;
 
-        if (imageData.length > 2_000_000) {
-          imageLoading = false;
-          $("plant-picture").value = "";
-
+        if (image.length > 2000000) {
           error(
             "Picture Too Large!",
-            "Please choose a smaller image."
+            "Choose a smaller picture."
           );
           return;
         }
 
-        temporaryImage = imageData;
-        imageLoading = false;
-        showPreview(temporaryImage);
+        temporaryImage = image;
+        showPreview(image);
       };
 
       reader.onerror = () => {
-        if (token !== imageToken) return;
-
         imageLoading = false;
 
         error(
           "Picture Error!",
-          "Your picture could not be loaded."
+          "Cannot read image."
         );
       };
 
@@ -1167,9 +1019,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  /* =====================================
-     CREATE AND UPDATE PLANTS
-  ===================================== */
+  // =====================================
+  // SAVE PLANTS
+  // =====================================
 
   $("plant-form").addEventListener(
     "submit",
@@ -1180,8 +1032,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (imageLoading) {
         error(
-          "Picture Still Loading!",
-          "Please try again after the picture loads."
+          "Picture Loading!",
+          "Wait for the picture to load."
         );
         return;
       }
@@ -1203,29 +1055,28 @@ document.addEventListener("DOMContentLoaded", () => {
         !name ||
         !type ||
         ![1, 2, 3].includes(frequency) ||
-        !/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime)
+        !startTime
       ) {
         error(
-          "Invalid Plant Details!",
-          "Please complete the plant information."
+          "Missing Information!",
+          "Complete the plant details."
         );
         return;
       }
 
-      const wasAdding = plantMode === "add";
-
-      const data = {
-        name,
-        type,
-        image: temporaryImage,
-        frequency,
-        startTime
-      };
-
       busy = true;
+      const adding = plantMode === "add";
 
       try {
-        if (wasAdding) {
+        const data = {
+          name,
+          type,
+          image: temporaryImage,
+          frequency,
+          startTime
+        };
+
+        if (adding) {
           const saved = await request(
             "POST",
             "/api/plants",
@@ -1234,7 +1085,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
           plants.push(saved);
           selectedPlantId = saved.id;
-
         } else {
           const existing = currentPlant();
 
@@ -1254,17 +1104,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         $("plant-dialog").close();
-
         renderPlants();
         renderNotifications();
 
         success(
-          wasAdding
-            ? "Plant Added!"
-            : "Plant Updated!",
-          wasAdding
-            ? `${name} has joined your garden!`
-            : `${name}'s details have been saved.`
+          adding ? "Plant Added!" : "Plant Updated!",
+          `${name}'s details were saved.`
         );
 
       } catch (err) {
@@ -1275,9 +1120,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  /* =====================================
-     DELETE PLANT
-  ===================================== */
+  // =====================================
+  // DELETE PLANTS
+  // =====================================
 
   $("delete-plant").addEventListener(
     "click",
@@ -1287,7 +1132,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!plant) {
         error(
           "Select a Plant!",
-          "Please select a plant before deleting."
+          "Select a plant to delete."
         );
         return;
       }
@@ -1310,30 +1155,26 @@ document.addEventListener("DOMContentLoaded", () => {
     "click",
     async () => {
       if (busy || !deletePlantId) return;
-
-      const plant = plants.find(
-        item => String(item.id) ===
-          String(deletePlantId)
-      );
-
-      if (!plant) return;
-
       busy = true;
 
       try {
+        const id = deletePlantId;
+
         await request(
           "DELETE",
-          `/api/plants/${encodeURIComponent(plant.id)}`
+          `/api/plants/${encodeURIComponent(id)}`
         );
 
         plants = plants.filter(
-          item => String(item.id) !==
-            String(plant.id)
+          plant => String(plant.id) !== String(id)
+        );
+
+        reminders = reminders.filter(
+          reminder => String(reminder.plantId) !== String(id)
         );
 
         recent = recent.filter(
-          item => String(item.id) !==
-            String(plant.id)
+          item => String(item.id) !== String(id)
         );
 
         try {
@@ -1347,14 +1188,14 @@ document.addEventListener("DOMContentLoaded", () => {
         deletePlantId = null;
 
         $("delete-dialog").close();
-
         renderPlants();
         renderNotifications();
 
         success(
           "Plant Deleted!",
-          `${plant.name} has been removed from your garden.`
+          "The plant was removed."
         );
+
       } catch (err) {
         error("Delete Failed!", err.message);
       } finally {
@@ -1363,39 +1204,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  /* =====================================
-     SEARCH AND FILTER
-  ===================================== */
-
-  $("plant-search").addEventListener(
-    "input", renderPlants
-  );
-
-  document.querySelectorAll("[data-filter]")
-    .forEach(button => {
-      button.addEventListener("click", () => {
-        filter = button.dataset.filter;
-
-        document.querySelectorAll("[data-filter]")
-          .forEach(item => {
-            item.classList.toggle(
-              "active",
-              item === button
-            );
-
-            item.setAttribute(
-              "aria-pressed",
-              String(item === button)
-            );
-          });
-
-        renderPlants();
-      });
-    });
-
-  /* =====================================
-     DASHBOARD STATISTICS
-  ===================================== */
+  // =====================================
+  // DASHBOARD STATISTICS
+  // =====================================
 
   function renderStats() {
     $("total-plants").textContent =
@@ -1412,9 +1223,9 @@ document.addEventListener("DOMContentLoaded", () => {
         .length;
   }
 
-  /* =====================================
-     CALENDAR
-  ===================================== */
+  // =====================================
+  // CALENDAR
+  // =====================================
 
   function renderCalendar() {
     const host = $("calendar-days");
@@ -1423,21 +1234,22 @@ document.addEventListener("DOMContentLoaded", () => {
     $("calendar-title").textContent =
       viewedMonth.toLocaleDateString(
         undefined,
-        { month: "long", year: "numeric" }
+        {
+          month: "long",
+          year: "numeric"
+        }
       );
 
     const year = viewedMonth.getFullYear();
     const month = viewedMonth.getMonth();
 
-    const count = new Date(
-      year, month + 1, 0
-    ).getDate();
+    const count =
+      new Date(year, month + 1, 0).getDate();
 
-    const leading = (
-      new Date(year, month, 1).getDay() + 6
-    ) % 7;
+    const leading =
+      (new Date(year, month, 1).getDay() + 6) % 7;
 
-    for (let i = 0; i < leading; i++) {
+    for (let index = 0; index < leading; index++) {
       host.append(
         node("span", "calendar-day empty")
       );
@@ -1490,7 +1302,6 @@ document.addEventListener("DOMContentLoaded", () => {
         viewedMonth.getMonth() - 1,
         1
       );
-
       renderCalendar();
     }
   );
@@ -1503,7 +1314,6 @@ document.addEventListener("DOMContentLoaded", () => {
         viewedMonth.getMonth() + 1,
         1
       );
-
       renderCalendar();
     }
   );
@@ -1511,13 +1321,13 @@ document.addEventListener("DOMContentLoaded", () => {
   $("calendar-today").addEventListener(
     "click",
     () => {
-      const today = new Date();
+      const date = new Date();
 
-      selectedDate = dateKey(today);
+      selectedDate = dateKey(date);
 
       viewedMonth = new Date(
-        today.getFullYear(),
-        today.getMonth(),
+        date.getFullYear(),
+        date.getMonth(),
         1
       );
 
@@ -1525,20 +1335,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  /* =====================================
-     CARE TODAY
-  ===================================== */
+  // =====================================
+  // CARE TODAY
+  // =====================================
 
   function renderCare() {
-    const today =
+    const isToday =
       selectedDate === dateKey(new Date());
 
-    $("care-title").textContent = today
-      ? "Care Today"
-      : `Care for ${displayDate(selectedDate, {
-          month: "short",
-          day: "numeric"
-        })}`;
+    $("care-title").textContent =
+      isToday
+        ? "Care Today"
+        : `Care for ${displayDate(selectedDate, {
+            month: "short",
+            day: "numeric"
+          })}`;
 
     $("selected-date-label").textContent =
       displayDate(selectedDate, {
@@ -1557,7 +1368,7 @@ document.addEventListener("DOMContentLoaded", () => {
         node(
           "p",
           "empty-message",
-          "Nothing scheduled for this day. Your garden is all caught up!"
+          "Nothing scheduled for this day."
         )
       );
       return;
@@ -1584,8 +1395,10 @@ document.addEventListener("DOMContentLoaded", () => {
         node("b", "", formatTime(item.time))
       );
 
-      const description =
-        node("div", "care-description");
+      const description = node(
+        "div",
+        "care-description"
+      );
 
       description.append(
         node("strong", "", item.plantName),
@@ -1593,16 +1406,14 @@ document.addEventListener("DOMContentLoaded", () => {
           "small",
           "",
           item.type +
-            (item.fromTracker
-              ? " · My Plants"
-              : "")
+            (item.fromTracker ? " · My Plants" : "")
         )
       );
 
-      row.append(time, description);
-
-      const checkbox =
-        node("input", "care-checkbox");
+      const checkbox = node(
+        "input",
+        "care-checkbox"
+      );
 
       checkbox.type = "checkbox";
       checkbox.checked = !!item.completed;
@@ -1615,31 +1426,26 @@ document.addEventListener("DOMContentLoaded", () => {
       if (item.fromTracker) {
         checkbox.disabled = true;
         checkbox.title =
-          "Water from My Plants to complete.";
+          "This scheduled watering entry is read-only.";
       } else {
         checkbox.addEventListener(
           "change",
           async () => {
-            const value = checkbox.checked;
-
             try {
               const updated = await request(
                 "PATCH",
                 `/api/reminders/${encodeURIComponent(item.id)}`,
-                { completed: value }
+                { completed: checkbox.checked }
               );
 
               Object.assign(item, updated);
               renderDashboard();
 
               success(
-                value
-                  ? "Care Complete!"
-                  : "Reminder Reopened!",
-                value
-                  ? `${item.plantName} has been cared for.`
-                  : `${item.plantName} is back on your list.`
+                "Reminder Updated!",
+                `${item.plantName}'s care has been updated.`
               );
+
             } catch (err) {
               renderDashboard();
               error("Save Failed!", err.message);
@@ -1648,7 +1454,7 @@ document.addEventListener("DOMContentLoaded", () => {
         );
       }
 
-      row.append(checkbox);
+      row.append(time, description, checkbox);
 
       if (!item.fromTracker) {
         const remove = node(
@@ -1659,17 +1465,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         remove.type = "button";
 
-        remove.addEventListener(
-          "click",
-          () => {
-            deleteCareId = item.id;
+        remove.addEventListener("click", () => {
+          deleteCareId = item.id;
 
-            $("delete-care-text").textContent =
-              `Remove ${item.plantName}'s ${item.type.toLowerCase()} reminder?`;
+          $("delete-care-text").textContent =
+            `Remove ${item.plantName}'s ${item.type.toLowerCase()} reminder?`;
 
-            $("delete-care-dialog").showModal();
-          }
-        );
+          $("delete-care-dialog").showModal();
+        });
 
         row.append(remove);
       }
@@ -1678,16 +1481,111 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* =====================================
-     CREATE CARE REMINDER
-  ===================================== */
+  // =====================================
+  // PLANT NAME DROPDOWN
+  // =====================================
+
+  function populateCarePlantNames(
+    type = "",
+    selectedId = ""
+  ) {
+    const select = $("care-plant-name");
+
+    select.replaceChildren(
+      new Option("Select a plant", "")
+    );
+
+    plants
+      .filter(plant => !type || plant.type === type)
+      .forEach(plant => {
+        select.add(
+          new Option(plant.name, String(plant.id))
+        );
+      });
+
+    select.value = selectedId;
+  }
+
+  // =====================================
+  // PLANT TYPE DROPDOWN
+  // =====================================
+
+  function populateCarePlantTypes() {
+    const select = $("care-plant-type");
+
+    select.replaceChildren(
+      new Option("Select a plant type", "")
+    );
+
+    const types = [
+      ...new Set(plants.map(plant => plant.type))
+    ].sort(
+      (a, b) => a.localeCompare(b)
+    );
+
+    types.forEach(type => {
+      select.add(new Option(type, type));
+    });
+  }
+
+  // =====================================
+  // LINK PLANT NAME AND PLANT TYPE
+  // =====================================
+
+  $("care-plant-name").addEventListener(
+    "change",
+    () => {
+      const plant = plants.find(
+        item =>
+          String(item.id) ===
+          $("care-plant-name").value
+      );
+
+      $("care-plant-type").value =
+        plant ? plant.type : "";
+    }
+  );
+
+  $("care-plant-type").addEventListener(
+    "change",
+    () => {
+      const type = $("care-plant-type").value;
+      const currentId = $("care-plant-name").value;
+
+      const current = plants.find(
+        item => String(item.id) === currentId
+      );
+
+      populateCarePlantNames(
+        type,
+        current?.type === type ? currentId : ""
+      );
+    }
+  );
+
+  // =====================================
+  // OPEN CARE REMINDER
+  // =====================================
 
   $("add-care-button").addEventListener(
     "click",
     () => {
+      if (!plants.length) {
+        error(
+          "No Plants Yet!",
+          "Add a plant in My Plants before creating a care reminder."
+        );
+        return;
+      }
+
       $("care-form").reset();
+
+      populateCarePlantTypes();
+      populateCarePlantNames();
+
       $("care-date").value = selectedDate;
       $("care-time").value = "09:00";
+
       $("care-dialog").showModal();
     }
   );
@@ -1697,22 +1595,35 @@ document.addEventListener("DOMContentLoaded", () => {
     () => $("care-dialog").close()
   );
 
+  // =====================================
+  // SAVE CARE REMINDER
+  // =====================================
+
   $("care-form").addEventListener(
     "submit",
     async event => {
       event.preventDefault();
 
-      const name =
-        $("care-plant-name").value.trim();
+      const plantId = $("care-plant-name").value;
+      const plantType = $("care-plant-type").value;
+
+      const plant = plants.find(
+        item => String(item.id) === plantId
+      );
 
       const type = $("care-type").value;
       const date = $("care-date").value;
       const time = $("care-time").value;
 
-      if (!name || !date || !time) {
+      if (
+        !plant ||
+        plant.type !== plantType ||
+        !date ||
+        !time
+      ) {
         error(
           "Missing Details!",
-          "Please complete the care reminder."
+          "Choose a matching plant name and type, date, and time."
         );
         return;
       }
@@ -1722,7 +1633,8 @@ document.addEventListener("DOMContentLoaded", () => {
           "POST",
           "/api/reminders",
           {
-            plantName: name,
+            plantId,
+            plantType,
             type,
             date,
             time
@@ -1730,7 +1642,6 @@ document.addEventListener("DOMContentLoaded", () => {
         );
 
         reminders.push(reminder);
-
         selectedDate = date;
 
         viewedMonth = new Date(
@@ -1744,17 +1655,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
         success(
           "Reminder Added!",
-          `${name}'s ${type.toLowerCase()} reminder is ready.`
+          `${plant.name}'s ${type.toLowerCase()} reminder is ready.`
         );
+
       } catch (err) {
-        error("Reminder Not Saved!", err.message);
+        error(
+          "Reminder Not Saved!",
+          err.message
+        );
       }
     }
   );
 
-  /* =====================================
-     DELETE CARE REMINDER
-  ===================================== */
+  // =====================================
+  // DELETE CARE REMINDER
+  // =====================================
 
   $("keep-care").addEventListener(
     "click",
@@ -1773,8 +1688,7 @@ document.addEventListener("DOMContentLoaded", () => {
         );
 
         reminders = reminders.filter(
-          item => String(item.id) !==
-            String(deleteCareId)
+          item => String(item.id) !== String(deleteCareId)
         );
 
         deleteCareId = null;
@@ -1784,17 +1698,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
         success(
           "Reminder Deleted!",
-          "Your care reminder has been removed."
+          "Care reminder removed."
         );
+
       } catch (err) {
-        error("Delete Failed!", err.message);
+        error(
+          "Delete Failed!",
+          err.message
+        );
       }
     }
   );
 
-  /* =====================================
-     NOTIFICATION BELL
-  ===================================== */
+  // =====================================
+  // NOTIFICATIONS
+  // =====================================
 
   function renderNotifications() {
     const host = $("notification-list");
@@ -1816,22 +1734,26 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     pending.forEach((item, index) => {
-      const entry =
-        node("div", "notification-entry");
+      const row = node(
+        "div",
+        "notification-entry"
+      );
 
       const image = node("img");
       image.src =
         `images/notification-flower-${index % 3 + 1}.svg`;
       image.alt = "";
 
-      const text = node(
-        "span",
-        "",
-        `${item.plantName}: ${item.type} at ${formatTime(item.time)}`
+      row.append(
+        image,
+        node(
+          "span",
+          "",
+          `${item.plantName}: ${item.type} at ${formatTime(item.time)}`
+        )
       );
 
-      entry.append(image, text);
-      host.append(entry);
+      host.append(row);
     });
   }
 
@@ -1839,7 +1761,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "click",
     () => {
       const panel = $("notification-panel");
-
       panel.hidden = !panel.hidden;
 
       $("notification-toggle").setAttribute(
@@ -1847,9 +1768,7 @@ document.addEventListener("DOMContentLoaded", () => {
         String(!panel.hidden)
       );
 
-      if (!panel.hidden) {
-        renderNotifications();
-      }
+      if (!panel.hidden) renderNotifications();
     }
   );
 
@@ -1857,16 +1776,16 @@ document.addEventListener("DOMContentLoaded", () => {
     "click",
     () => {
       $("notification-panel").hidden = true;
-
       $("notification-toggle").setAttribute(
-        "aria-expanded", "false"
+        "aria-expanded",
+        "false"
       );
     }
   );
 
-  /* =====================================
-     RECENTLY VIEWED
-  ===================================== */
+  // =====================================
+  // RECENTLY VIEWED - DATE ONLY
+  // =====================================
 
   function renderRecent() {
     const host = $("recent-list");
@@ -1874,8 +1793,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const existing = recent.filter(
       item => plants.some(
-        plant => String(plant.id) ===
-          String(item.id)
+        plant => String(plant.id) === String(item.id)
       )
     );
 
@@ -1892,27 +1810,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
     existing.slice(0, 3).forEach(item => {
       const plant = plants.find(
-        record => String(record.id) ===
-          String(item.id)
+        record => String(record.id) === String(item.id)
       );
 
-      const link =
-        node("a", "recent-plant");
+      const link = node(
+        "a",
+        "recent-plant"
+      );
 
       link.href = "?page=tracker";
 
+      const date = new Date(
+        item.viewedAt
+      ).toLocaleDateString(
+        undefined,
+        {
+          year: "numeric",
+          month: "short",
+          day: "numeric"
+        }
+      );
+
       link.append(
-        node(
-          "small",
-          "",
-          new Date(item.viewedAt).toLocaleString()
-        ),
+        node("small", "", date),
         node("h3", "", plant.name),
-        node(
-          "p",
-          "",
-          "View Plant Details →"
-        )
+        node("p", "", "View Plant Details →")
       );
 
       link.addEventListener(
@@ -1928,9 +1850,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // =====================================
+  // RENDER DASHBOARD
+  // =====================================
+
   function renderDashboard() {
     $("welcome-title").textContent =
-      `Welcome back, ${currentUsername()}!`;
+      `Welcome back, ${account?.username || "Gardener"}!`;
 
     renderStats();
     renderCalendar();
@@ -1939,9 +1865,9 @@ document.addEventListener("DOMContentLoaded", () => {
     renderNotifications();
   }
 
-  /* =====================================
-     SETTINGS
-  ===================================== */
+  // =====================================
+  // SETTINGS
+  // =====================================
 
   function populateSettings() {
     if (!account) return;
@@ -1960,26 +1886,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!account) return;
 
-      const username =
-        $("settings-username").value.trim();
-
-      const email =
-        $("settings-email").value
-          .trim().toLowerCase();
-
-      if (!username || !email) {
-        error(
-          "Invalid Information!",
-          "Please complete your profile details."
-        );
-        return;
-      }
-
       try {
         const result = await request(
           "PUT",
           "/api/me",
-          { username, email }
+          {
+            username:
+              $("settings-username").value.trim(),
+            email:
+              $("settings-email").value
+                .trim().toLowerCase()
+          }
         );
 
         account = result.user;
@@ -1988,28 +1905,28 @@ document.addEventListener("DOMContentLoaded", () => {
           "Profile Updated!",
           "Your account details have been saved."
         );
+
       } catch (err) {
-        error("Update Failed!", err.message);
+        error(
+          "Update Failed!",
+          err.message
+        );
       }
     }
   );
 
-  /* =====================================
-     DELETE ACCOUNT
-  ===================================== */
+  // =====================================
+  // DELETE ACCOUNT
+  // =====================================
 
   $("delete-account").addEventListener(
     "click",
-    () => {
-      $("delete-account-dialog").showModal();
-    }
+    () => $("delete-account-dialog").showModal()
   );
 
   $("cancel-delete-account").addEventListener(
     "click",
-    () => {
-      $("delete-account-dialog").close();
-    }
+    () => $("delete-account-dialog").close()
   );
 
   $("confirm-delete-account").addEventListener(
@@ -2036,25 +1953,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
         success(
           "Account Data Deleted!",
-          "Your saved information has been removed."
+          "Your saved information was deleted."
         );
 
-        setTimeout(() => {
-          go("login", true);
-        }, 2000);
+        setTimeout(
+          () => go("login", true),
+          2000
+        );
 
       } catch (err) {
-        error("Delete Failed!", err.message);
+        error(
+          "Delete Failed!",
+          err.message
+        );
       }
     }
   );
 
-  /* =====================================
-     REFRESH
-  ===================================== */
+  // =====================================
+  // REFRESH
+  // =====================================
 
   async function refresh() {
-    if (!account) return;
+    if (!account || busy) return;
 
     try {
       await loadAccountData();
@@ -2070,8 +1991,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!$("notification-panel").hidden) {
         renderNotifications();
       }
+
     } catch (err) {
-      console.warn("Refresh failed:", err.message);
+      console.warn(
+        "Refresh failed:",
+        err.message
+      );
     }
   }
 
@@ -2080,15 +2005,13 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener(
     "visibilitychange",
     () => {
-      if (!document.hidden && !busy) {
-        refresh();
-      }
+      if (!document.hidden) refresh();
     }
   );
 
-  /* =====================================
-     INITIAL PAGE
-  ===================================== */
+  // =====================================
+  // INITIAL PAGE
+  // =====================================
 
   async function initialize() {
     const requested = new URLSearchParams(
@@ -2097,11 +2020,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const result = await api("/api/me");
-      account = result.user;
 
+      account = result.user;
       await loadAccountData();
 
       showPage(requested);
+
     } catch {
       account = null;
       plants = [];
