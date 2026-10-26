@@ -37,9 +37,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let loadingFrame;
   let busy = false;
 
-  // =====================================
+  // 
   // GENERAL HELPERS
-  // =====================================
+  // 
 
   function dateKey(date) {
     return [
@@ -100,9 +100,8 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
-  // =====================================
-  // POPUP MESSAGES
-  // =====================================
+
+// Popup mesages SUCCESS or ERROR.
 
   function showMessage(title, message, kind = "success") {
     clearTimeout(popupTimer);
@@ -137,9 +136,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 2000);
   }
 
-  // =====================================
+  // 
   // BACKEND REQUESTS
-  // =====================================
+  // 
 
   async function api(url, options = {}) {
     let response;
@@ -214,9 +213,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // =====================================
+  // 
   // PAGE NAVIGATION
-  // =====================================
+  // 
 
   function showPage(target) {
     if (!PAGES.includes(target)) target = "home";
@@ -320,9 +319,9 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   });
 
-  // =====================================
+  // 
   // SIGN UP
-  // =====================================
+  // 
 
   $("signup-form").addEventListener(
     "submit",
@@ -386,9 +385,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
+  // 
   // LOGIN
-  // =====================================
+  // 
 
   $("login-form").addEventListener(
     "submit",
@@ -424,9 +423,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
+  // 
   // LOGOUT
-  // =====================================
+  // 
 
   async function logout() {
     clearTimeout(signupTimer);
@@ -452,9 +451,9 @@ document.addEventListener("DOMContentLoaded", () => {
       button.addEventListener("click", logout);
     });
 
-  // =====================================
+  // 
   // LOADING SCREEN
-  // =====================================
+  // 
 
   function startLoading() {
     const start = performance.now();
@@ -486,9 +485,9 @@ document.addEventListener("DOMContentLoaded", () => {
     loadingFrame = requestAnimationFrame(tick);
   }
 
-  // =====================================
+  // 
   // MOBILE MENU
-  // =====================================
+  // 
 
   $("menu-toggle").addEventListener("click", () => {
     $("mobile-nav").hidden =
@@ -500,10 +499,10 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   });
 
-  // =====================================
+  // 
   // WATERING SCHEDULE
   // Read-only status and scheduled dates
-  // =====================================
+  // 
 
   function plantSchedule(plant, now = Date.now()) {
     const frequency =
@@ -630,10 +629,10 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
-  // =====================================
+  // 
   // MY PLANTS
   // Water button removed
-  // =====================================
+  // 
 
   function renderPlants() {
     const host = $("plant-grid");
@@ -748,9 +747,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // =====================================
+  // 
   // SEARCH AND FILTER
-  // =====================================
+  // 
 
   $("plant-search").addEventListener(
     "input",
@@ -779,9 +778,9 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-  // =====================================
+  // 
   // RECENTLY VIEWED HISTORY
-  // =====================================
+  // 
 
   function saveRecentlyViewed(plant) {
     recent = [
@@ -805,10 +804,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // =====================================
+  // 
   // VIEW PLANT DETAILS
   // Water It / Already Watered removed
-  // =====================================
+  // 
 
   function openPlantDetails(plant) {
     selectedPlantId = plant.id;
@@ -872,9 +871,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
+  // 
   // ADD AND EDIT PLANTS
-  // =====================================
+  // 
 
   function showPreview(image) {
     $("preview-area").hidden = !image;
@@ -956,9 +955,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
+  // 
   // PLANT IMAGE UPLOAD
-  // =====================================
+  // 
 
   $("plant-picture").addEventListener(
     "change",
@@ -1019,9 +1018,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
+  // 
   // SAVE PLANTS
-  // =====================================
+  // 
 
   $("plant-form").addEventListener(
     "submit",
@@ -1120,9 +1119,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
+  // 
   // DELETE PLANTS
-  // =====================================
+  // 
 
   $("delete-plant").addEventListener(
     "click",
@@ -1204,9 +1203,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
+  // 
   // DASHBOARD STATISTICS
-  // =====================================
+  // 
 
   function renderStats() {
     $("total-plants").textContent =
@@ -1223,9 +1222,9 @@ document.addEventListener("DOMContentLoaded", () => {
         .length;
   }
 
-  // =====================================
+  // 
   // CALENDAR
-  // =====================================
+  // 
 
   function renderCalendar() {
     const host = $("calendar-days");
@@ -1335,9 +1334,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
+  // 
   // CARE TODAY
-  // =====================================
+  // 
 
   function renderCare() {
     const isToday =
@@ -1481,9 +1480,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // =====================================
+  // 
   // PLANT NAME DROPDOWN
-  // =====================================
+  // 
 
   function populateCarePlantNames(
     type = "",
@@ -1506,9 +1505,9 @@ document.addEventListener("DOMContentLoaded", () => {
     select.value = selectedId;
   }
 
-  // =====================================
+  // 
   // PLANT TYPE DROPDOWN
-  // =====================================
+  // 
 
   function populateCarePlantTypes() {
     const select = $("care-plant-type");
@@ -1528,9 +1527,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // =====================================
+  // 
   // LINK PLANT NAME AND PLANT TYPE
-  // =====================================
+  // 
 
   $("care-plant-name").addEventListener(
     "change",
@@ -1563,9 +1562,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
+  // 
   // OPEN CARE REMINDER
-  // =====================================
+  // 
 
   $("add-care-button").addEventListener(
     "click",
@@ -1595,9 +1594,9 @@ document.addEventListener("DOMContentLoaded", () => {
     () => $("care-dialog").close()
   );
 
-  // =====================================
+  // 
   // SAVE CARE REMINDER
-  // =====================================
+  // 
 
   $("care-form").addEventListener(
     "submit",
@@ -1667,9 +1666,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
   // DELETE CARE REMINDER
-  // =====================================
 
   $("keep-care").addEventListener(
     "click",
@@ -1710,9 +1707,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
+  // 
   // NOTIFICATIONS
-  // =====================================
+  // 
 
   function renderNotifications() {
     const host = $("notification-list");
@@ -1783,9 +1780,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
+  // 
   // RECENTLY VIEWED - DATE ONLY
-  // =====================================
+  // 
 
   function renderRecent() {
     const host = $("recent-list");
@@ -1850,9 +1847,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // =====================================
+  // 
   // RENDER DASHBOARD
-  // =====================================
+  // 
 
   function renderDashboard() {
     $("welcome-title").textContent =
@@ -1865,9 +1862,9 @@ document.addEventListener("DOMContentLoaded", () => {
     renderNotifications();
   }
 
-  // =====================================
+  // 
   // SETTINGS
-  // =====================================
+  // 
 
   function populateSettings() {
     if (!account) return;
@@ -1915,9 +1912,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
+  // 
   // DELETE ACCOUNT
-  // =====================================
+  // 
 
   $("delete-account").addEventListener(
     "click",
@@ -1970,9 +1967,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
+  // 
   // REFRESH
-  // =====================================
+  // 
 
   async function refresh() {
     if (!account || busy) return;
@@ -2009,9 +2006,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   );
 
-  // =====================================
+  // 
   // INITIAL PAGE
-  // =====================================
+  // 
 
   async function initialize() {
     const requested = new URLSearchParams(
