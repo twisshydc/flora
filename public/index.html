@@ -1,6 +1,6 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,11 +14,9 @@
 
   <!-- WELCOME SCREEN -->
   <section class="page-screen auth-screen" data-screen="home" hidden>
-    <main class="iphone">
+    <main class="welcome-page">
       <div class="component">
-        <img class="component-2"
-             src="images/Component 2.svg"
-             alt="Cute Flora flower">
+        <img class="component-2" src="images/Component 2.svg" alt="Cute Flora flower">
       </div>
       <nav class="button-container" aria-label="Account navigation">
         <a class="flora-button" href="?page=signup">Signup</a>
@@ -40,35 +38,19 @@
 
           <form id="signup-form">
             <label for="signup-username">Username</label>
-            <input id="signup-username"
-                   name="username"
-                   placeholder="Choose a username"
-                   maxlength="30"
-                   autocomplete="username"
-                   required>
+            <input id="signup-username" name="username" placeholder="Choose a username" maxlength="30"
+              autocomplete="username" required>
 
             <label for="signup-email">Email</label>
-            <input id="signup-email"
-                   type="email"
-                   placeholder="you@example.com"
-                   autocomplete="email"
-                   required>
+            <input id="signup-email" type="email" placeholder="you@example.com" autocomplete="email" required>
 
             <label for="signup-password">Password</label>
-            <input id="signup-password"
-                   type="password"
-                   placeholder="Create a password"
-                   minlength="8"
-                   autocomplete="new-password"
-                   required>
+            <input id="signup-password" type="password" placeholder="Create a password" minlength="8"
+              autocomplete="new-password" required>
 
             <label for="signup-confirm">Confirm Password</label>
-            <input id="signup-confirm"
-                   type="password"
-                   placeholder="Confirm your password"
-                   minlength="8"
-                   autocomplete="new-password"
-                   required>
+            <input id="signup-confirm" type="password" placeholder="Confirm your password" minlength="8"
+              autocomplete="new-password" required>
 
             <button class="flora-button" type="submit">Sign Up</button>
             <p class="form-message" id="signup-message" role="status"></p>
@@ -76,7 +58,7 @@
 
           <p class="switch-page">
             Already have an account?
-            <a href="?page=login">Sign In</a>
+            <a href="?page=login">Log in</a>
           </p>
         </section>
       </div>
@@ -91,25 +73,18 @@
 
         <section class="login-card">
           <p class="auth-eyebrow">Welcome back!</p>
-          <h1>Sign In</h1>
+          <h1>Log In</h1>
           <p class="subtitle">Your little flower garden is waiting.</p>
 
           <form id="login-form">
             <label for="login-email">Email</label>
-            <input id="login-email"
-                   type="email"
-                   placeholder="you@example.com"
-                   autocomplete="email"
-                   required>
+            <input id="login-email" type="email" placeholder="you@example.com" autocomplete="email" required>
 
             <label for="login-password">Password</label>
-            <input id="login-password"
-                   type="password"
-                   placeholder="Enter your password"
-                   autocomplete="current-password"
-                   required>
+            <input id="login-password" type="password" placeholder="Enter your password" autocomplete="current-password"
+              required>
 
-            <button class="flora-button" type="submit">Sign In</button>
+            <button class="flora-button" type="submit">Log In</button>
             <p class="form-message" id="login-message" role="status"></p>
           </form>
 
@@ -126,20 +101,14 @@
   <section class="page-screen" data-screen="loading" hidden>
     <main class="loading-page">
       <div class="loading-character">
-        <img class="loading-flower"
-             src="images/loading-component.svg"
-             alt="Flora flower">
+        <img class="loading-flower" src="images/loading-component.svg" alt="Flora flower">
       </div>
 
       <div class="loading-content">
         <h1>Growing your garden...</h1>
         <p>Just a little moment! 🌸</p>
-        <div class="loading-bar"
-             role="progressbar"
-             aria-label="Loading Flora"
-             aria-valuemin="0"
-             aria-valuemax="100"
-             aria-valuenow="0">
+        <div class="loading-bar" role="progressbar" aria-label="Loading Flora" aria-valuemin="0" aria-valuemax="100"
+          aria-valuenow="0">
           <div class="loading-progress"></div>
         </div>
         <p class="loading-percent" id="loading-percent">0%</p>
@@ -160,39 +129,25 @@
       </nav>
 
       <div class="nav-actions">
-        <button class="round-icon bell-button"
-                id="notification-toggle"
-                type="button"
-                aria-label="Notifications"
-                aria-expanded="false">
+        <button class="round-icon bell-button" id="notification-toggle" type="button" aria-label="Notifications"
+          aria-expanded="false">
           <img src="images/bell.svg" alt="">
         </button>
 
-        <a class="round-icon desktop-setting"
-           href="?page=settings"
-           data-nav="settings"
-           aria-label="Settings">
+        <a class="round-icon desktop-setting" href="?page=settings" data-nav="settings" aria-label="Settings">
           <img src="images/settings.svg" alt="">
         </a>
 
-        <button class="logout desktop-logout"
-                type="button"
-                data-logout>Log Out</button>
+        <button class="logout desktop-logout" type="button" data-logout>Log Out</button>
 
-        <button class="round-icon menu-toggle"
-                id="menu-toggle"
-                type="button"
-                aria-label="Open menu"
-                aria-expanded="false">
+        <button class="round-icon menu-toggle" id="menu-toggle" type="button" aria-label="Open menu"
+          aria-expanded="false">
           <img src="images/menu.svg" alt="">
         </button>
       </div>
     </div>
 
-    <nav id="mobile-nav"
-         class="mobile-nav"
-         aria-label="Mobile navigation"
-         hidden>
+    <nav id="mobile-nav" class="mobile-nav" aria-label="Mobile navigation" hidden>
       <a href="?page=dashboard">Dashboard</a>
       <a href="?page=tracker">My Plants</a>
       <a href="?page=settings">Settings</a>
@@ -201,14 +156,10 @@
   </header>
 
   <!-- NOTIFICATIONS -->
-  <section class="notification-panel container"
-           id="notification-panel"
-           hidden>
+  <section class="notification-panel container" id="notification-panel" hidden>
     <div class="notification-heading">
       <h2>Care Notifications ✿</h2>
-      <button type="button"
-              id="close-notifications"
-              aria-label="Close notifications">×</button>
+      <button type="button" id="close-notifications" aria-label="Close notifications">×</button>
     </div>
     <div id="notification-list" class="notification-list"></div>
   </section>
@@ -250,17 +201,11 @@
             <!-- CALENDAR -->
             <section class="widget calendar-widget">
               <div class="calendar-header">
-                <button id="prev-month"
-                        class="month-arrow"
-                        type="button"
-                        aria-label="Previous month">‹</button>
+                <button id="prev-month" class="month-arrow" type="button" aria-label="Previous month">‹</button>
 
                 <h2 id="calendar-title">Calendar</h2>
 
-                <button id="next-month"
-                        class="month-arrow"
-                        type="button"
-                        aria-label="Next month">›</button>
+                <button id="next-month" class="month-arrow" type="button" aria-label="Next month">›</button>
               </div>
 
               <div class="calendar-weekdays">
@@ -297,9 +242,7 @@
               <div id="care-list" class="care-list"></div>
 
               <div class="care-actions">
-                <button id="add-care-button"
-                        class="add-care-button"
-                        type="button">
+                <button id="add-care-button" class="add-care-button" type="button">
                   + Add Care
                 </button>
               </div>
@@ -349,33 +292,23 @@
 
       <section class="controls">
         <div class="action-line">
-          <button id="add-plant"
-                  type="button"
-                  class="square-action"
-                  aria-label="Add plant"
-                  title="Add plant">
+          <button id="add-plant" type="button" class="square-action" aria-label="Add plant" title="Add plant">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 5v14M5 12h14"/>
+              <path d="M12 5v14M5 12h14" />
             </svg>
           </button>
 
-          <button id="delete-plant"
-                  type="button"
-                  class="square-action"
-                  aria-label="Delete plant"
-                  title="Delete selected plant">
+          <button id="delete-plant" type="button" class="square-action" aria-label="Delete plant"
+            title="Delete selected plant">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v6M14 11v6"/>
+              <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v6M14 11v6" />
             </svg>
           </button>
 
-          <button id="edit-plant"
-                  type="button"
-                  class="square-action"
-                  aria-label="Edit plant"
-                  title="Edit selected plant">
+          <button id="edit-plant" type="button" class="square-action" aria-label="Edit plant"
+            title="Edit selected plant">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m4 16 12-12 4 4-12 12-5 1 1-5ZM14 6l4 4"/>
+              <path d="m4 16 12-12 4 4-12 12-5 1 1-5ZM14 6l4 4" />
             </svg>
           </button>
         </div>
@@ -384,24 +317,15 @@
           <label class="sr-only" for="plant-search">
             Search plants
           </label>
-          <input id="plant-search"
-                 class="search"
-                 type="search"
-                 placeholder="Search plants">
+          <input id="plant-search" class="search" type="search" placeholder="Search plants">
 
-          <button class="filter active"
-                  type="button"
-                  data-filter="all">All</button>
+          <button class="filter active" type="button" data-filter="all">All</button>
 
-          <button class="filter"
-                  type="button"
-                  data-filter="needs-water">Needs Water</button>
+          <button class="filter" type="button" data-filter="needs-water">Needs Water</button>
         </div>
       </section>
 
-      <section id="plant-grid"
-               class="plant-grid"
-               aria-label="Your plants"></section>
+      <section id="plant-grid" class="plant-grid" aria-label="Your plants"></section>
 
       <p id="empty-message" class="empty" hidden>
         No plants found.
@@ -423,17 +347,10 @@
 
         <form id="profile-form">
           <label for="settings-username">Username</label>
-          <input id="settings-username"
-                 type="text"
-                 maxlength="30"
-                 autocomplete="username"
-                 required>
+          <input id="settings-username" type="text" maxlength="30" autocomplete="username" required>
 
           <label for="settings-email">Email Address</label>
-          <input id="settings-email"
-                 type="email"
-                 autocomplete="email"
-                 required>
+          <input id="settings-email" type="email" autocomplete="email" required>
 
           <button class="primary-btn" type="submit">
             Save Changes
@@ -448,9 +365,7 @@
           plants, and care reminders from this browser.
           This action cannot be undone.
         </p>
-        <button id="delete-account"
-                type="button"
-                class="danger-btn">
+        <button id="delete-account" type="button" class="danger-btn">
           Delete Account Data
         </button>
       </section>
@@ -469,9 +384,7 @@
       <input id="plant-type" maxlength="50" required>
 
       <label for="plant-picture">Plant Picture</label>
-      <input id="plant-picture"
-             type="file"
-             accept="image/png,image/jpeg,image/webp">
+      <input id="plant-picture" type="file" accept="image/png,image/jpeg,image/webp">
 
       <div id="preview-area" class="preview-area" hidden>
         <img id="picture-preview" alt="Plant picture preview">
@@ -485,19 +398,14 @@
       </select>
 
       <label for="watering-start-time">First Watering Time</label>
-      <input id="watering-start-time"
-             type="time"
-             value="08:00"
-             required>
+      <input id="watering-start-time" type="time" value="08:00" required>
 
       <p class="schedule-note">
         Choose a watering schedule that suits your plant.
       </p>
 
       <div class="dialog-actions">
-        <button id="cancel-dialog"
-                type="button"
-                class="dialog-cancel">Cancel</button>
+        <button id="cancel-dialog" type="button" class="dialog-cancel">Cancel</button>
         <button class="dialog-save" type="submit">
           Save Plant
         </button>
@@ -506,16 +414,12 @@
   </dialog>
 
   <!-- VIEW PLANT DETAILS -->
-  <dialog id="view-plant-dialog"
-          class="plant-dialog view-plant-dialog">
+  <dialog id="view-plant-dialog" class="plant-dialog view-plant-dialog">
     <div class="view-plant-content">
 
       <div class="view-heading">
         <h2 id="view-plant-name">Plant Details</h2>
-        <button id="close-view-plant"
-                class="view-close"
-                type="button"
-                aria-label="Close details">×</button>
+        <button id="close-view-plant" class="view-close" type="button" aria-label="Close details">×</button>
       </div>
 
       <div class="view-plant-photo">
@@ -551,9 +455,7 @@
 
       <!-- ONLY EDIT PLANT REMAINS -->
       <div class="view-actions">
-        <button id="view-edit-button"
-                class="view-edit-button"
-                type="button">
+        <button id="view-edit-button" class="view-edit-button" type="button">
           Edit Plant
         </button>
       </div>
@@ -561,12 +463,11 @@
   </dialog>
 
   <!-- DELETE PLANT -->
-  <dialog id="delete-dialog"
-          class="plant-dialog delete-dialog">
+  <dialog id="delete-dialog" class="plant-dialog delete-dialog">
     <div class="delete-content">
       <div class="delete-icon">
         <svg viewBox="0 0 24 24">
-          <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v6M14 11v6"/>
+          <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v6M14 11v6" />
         </svg>
       </div>
       <h2>Delete this plant?</h2>
@@ -575,12 +476,8 @@
       </p>
 
       <div class="delete-actions">
-        <button id="keep-plant"
-                type="button"
-                class="dialog-cancel">Keep Plant</button>
-        <button id="confirm-delete"
-                type="button"
-                class="confirm-delete">Yes, Delete</button>
+        <button id="keep-plant" type="button" class="dialog-cancel">Keep Plant</button>
+        <button id="confirm-delete" type="button" class="confirm-delete">Yes, Delete</button>
       </div>
     </div>
   </dialog>
@@ -616,17 +513,11 @@
       <input id="care-date" type="date" required>
 
       <label for="care-time">Time</label>
-      <input id="care-time"
-             type="time"
-             value="09:00"
-             required>
+      <input id="care-time" type="time" value="09:00" required>
 
       <div class="dialog-actions">
-        <button id="cancel-care-button"
-                type="button"
-                class="dialog-cancel">Cancel</button>
-        <button type="submit"
-                class="dialog-save">Save Reminder</button>
+        <button id="cancel-care-button" type="button" class="dialog-cancel">Cancel</button>
+        <button type="submit" class="dialog-save">Save Reminder</button>
       </div>
     </form>
   </dialog>
@@ -636,12 +527,8 @@
     <h2>Delete reminder?</h2>
     <p id="delete-care-text">Remove this care reminder?</p>
     <div class="dialog-actions">
-      <button id="keep-care"
-              type="button"
-              class="dialog-cancel">Keep It</button>
-      <button id="confirm-delete-care"
-              type="button"
-              class="confirm-delete">Yes, Delete</button>
+      <button id="keep-care" type="button" class="dialog-cancel">Keep It</button>
+      <button id="confirm-delete-care" type="button" class="confirm-delete">Yes, Delete</button>
     </div>
   </dialog>
 
@@ -653,36 +540,23 @@
       plants and reminders from this browser.
     </p>
     <div class="dialog-actions">
-      <button id="cancel-delete-account"
-              type="button"
-              class="dialog-cancel">Cancel</button>
-      <button id="confirm-delete-account"
-              type="button"
-              class="confirm-delete">Delete</button>
+      <button id="cancel-delete-account" type="button" class="dialog-cancel">Cancel</button>
+      <button id="confirm-delete-account" type="button" class="confirm-delete">Delete</button>
     </div>
   </dialog>
 
   <!-- SUCCESS / ERROR POPUP -->
   <div id="quick-popup" class="quick-popup" hidden>
-    <div class="quick-popup-card"
-         role="status"
-         aria-live="polite">
+    <div class="quick-popup-card" role="status" aria-live="polite">
       <div class="quick-popup-icon">
-        <img id="quick-popup-image"
-             src="images/check.svg"
-             alt=""
-             width="64"
-             height="64">
+        <img id="quick-popup-image" src="images/check.svg" alt="" width="64" height="64">
       </div>
       <h3 id="quick-popup-title">Done!</h3>
       <p id="quick-popup-text">Your action was successful.</p>
     </div>
   </div>
 
-  <p id="toast"
-     class="toast"
-     role="status"
-     aria-live="polite"></p>
+  <p id="toast" class="toast" role="status" aria-live="polite"></p>
 
   <!-- FOOTER -->
   <footer class="page-footer" id="app-footer" hidden>
@@ -690,4 +564,5 @@
   </footer>
 
 </body>
+
 </html>

@@ -11,7 +11,7 @@
    WELCOME PAGE
 ===================================== */
 
-.iphone {
+.welcome-page {
   position: relative;
   isolation: isolate;
   display: flex;
@@ -29,7 +29,7 @@
   font-family: "Cute Flora Yuruka", Arial, sans-serif;
 }
 
-.iphone .component {
+.welcome-page .component {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -38,7 +38,7 @@
   height: 320px;
 }
 
-.iphone .component-2 {
+.welcome-page .component-2 {
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -52,7 +52,7 @@
   to { transform: rotate(8deg); }
 }
 
-.iphone .button-container {
+.welcome-page .button-container {
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -60,7 +60,7 @@
   max-width: 334px;
 }
 
-.iphone .flora-button {
+.welcome-page .flora-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -76,7 +76,7 @@
   transition: .2s ease;
 }
 
-.iphone .flora-button:hover {
+.welcome-page .flora-button:hover {
   background: #ffe6a7;
   transform: scale(1.04);
   box-shadow: 0 6px 0 #037e26;
@@ -1737,7 +1737,7 @@
     height: 27px;
   }
 
-  .iphone {
+  .welcome-page {
     justify-content: flex-start;
     gap: 18px;
     padding: 145px 20px 160px;
@@ -1745,12 +1745,12 @@
       url("images/background-mobile.png");
   }
 
-  .iphone .component {
+  .welcome-page .component {
     width: 280px;
     height: 280px;
   }
 
-  .iphone .flora-button {
+  .welcome-page .flora-button {
     min-height: 94px;
     font-size: 40px;
   }
