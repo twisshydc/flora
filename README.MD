@@ -1,4 +1,4 @@
-#Hello we are Trisha Gayle Dela Cruz and Ma. Dennise Berja from section H3101 of MO-IT161 - Web Systems and Technology.
+Hello we are Trisha Gayle Dela Cruz and Ma. Dennise Berja from section H3101 of MO-IT161 - Web Systems and Technology.
 
 This is our web app Flora! It is a browser-based plant tracking application designed mainly for beginner plant owners, home gardeners, and plant enthusiasts who need a simple way to organize and monitor their plants.
 
